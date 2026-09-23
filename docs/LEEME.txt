@@ -1,0 +1,79 @@
+DINO CRISIS (PS1, PAL España) - CONTROLES MODERNOS v6.11
+========================================================
+
+Parche para la versión PAL española de Dino Crisis (SLES-02211).
+NO incluye el juego: necesitás tu propia copia.
+
+CONTROLES
+- Stick izquierdo: mover en 360°, relativo a la cámara (sin controles tanque).
+- L2: apuntar.  R2: disparar.  R1 (mantenido): caminar.
+- Cuadrado: activa/desactiva el correr automático (arranca activado). Con el
+  correr automático apagado, Cuadrado corre mantenido, como en el original.
+- X: acción, como en el original.
+- Stick derecho: mueve la cámara al hombro. Apuntando, gira la mira.
+- R3: alterna entre la cámara al hombro y las cámaras fijas originales.
+  El juego arranca con la cámara original.
+- L3: pone la cámara detrás de Regina.
+- Triángulo: muestra/oculta el HUD.
+- Start: saltea los videos (también los de la intro y los logos).
+
+QUÉ HACE
+- Movimiento libre en 360° con stick analógico, relativo a la cámara.
+- Modo analógico automático: el parche lo activa solo al entrar a jugar.
+- Cámara en tercera persona al hombro:
+  - se ve toda la sala, no solo lo que entra en la cámara fija del momento,
+    incluidos los dinosaurios;
+  - los cambios de cámara no pausan el juego;
+  - fondo negro fuera de la sala;
+  - láseres y fuentes de luz visibles desde los dos lados.
+- Apuntado de doble stick: el stick derecho gira la mira y el izquierdo mueve
+  a Regina sin mover la mira.
+- Disparo cancelable: al mover el stick o soltar L2, Regina sale de la
+  animación de disparo (también del bombeo de la escopeta). Entre disparos hay
+  una espera parecida a la del original.
+- HUD: arma, cargador/reserva ("VACIO" cuando no quedan balas) y vitalidad
+  con barra de color.
+- Start saltea todos los videos. La pantalla de advertencia del inicio no se
+  saltea: ahí el juego hace su chequeo de protección.
+- En cinemáticas no se puede mover a Regina y se usa la cámara original.
+- Empujar objetos y demás acciones especiales funcionan como en el original.
+
+IMAGEN REQUERIDA
+Pista de datos: "Dino Crisis (Spain) (Track 1).bin"
+  Tamaño: 387.317.952 bytes
+  CRC32 : BE3BC2EA
+  MD5   : e271ee223eda1c8bcf12e8a9873ec3dc
+  SHA-1 : 29cda9847ddfb85e0b8c4f016654d171741798b7
+Si tu Track 1 no coincide, el parche no va a funcionar.
+Es el volcado de Redump (redump.org/disc/27940): las dos pistas coinciden.
+El Track 2 (audio) se usa sin tocar; su SHA-1 en Redump es
+d9f92af296360772e62caa4cb276de3fa74f5538.
+
+Resultado esperado (Track 1 parcheado):
+  CRC32 : 530C2DC7
+  MD5   : 3bd2aafedc96b6cfa20df9aaff9981d6
+  SHA-1 : a808e0f1b9988bf6bbb4f387080148c9ad7dcff1
+
+CÓMO APLICARLO
+Parcheá SOLO el Track 1 y hacé una copia antes.
+- xdelta (recomendado): con Delta Patcher o xdelta UI, elegí el Track 1
+  original y el archivo .xdelta. Si la imagen no es la correcta, no se aplica.
+- PPF: con PPF-O-Matic, elegí el Track 1 y el archivo .ppf. Solo comprueba
+  que sea el mismo disco, no la versión exacta del volcado: verificá la huella
+  del Track 1 antes.
+No cambies el nombre de los archivos. El Track 2, el .cue y el .sbi se
+usan tal cual, sin modificar.
+
+IMPORTANTE
+- La versión PAL usa LibCrypt: en emuladores hace falta el .sbi original junto
+  al .cue. El parche no mueve ningún sector, así que el .sbi sigue valiendo.
+- Para consola real o para PS2 (POPStarter) no hay subcanal y el .sbi no
+  sirve: hay que quitar LibCrypt de la imagen con una herramienta aparte
+  (por ejemplo libcrypt-patcher) y recién después aplicar este parche.
+- Probado en PCSX-Redux y DuckStation. No probado en consola real.
+- Las partidas de la memory card sirven. Los savestates NO: no uses
+  savestates hechos con el juego sin parchear ni con otra versión del parche.
+- En vistas al hombro muy cargadas puede faltar alguna parte del escenario
+  lejano durante ese momento: es el límite que evita que el juego se cuelgue.
+- Con la cámara al hombro, algún marco de puerta puede verse a través de una
+  pared: es un límite del orden de dibujo del motor original.

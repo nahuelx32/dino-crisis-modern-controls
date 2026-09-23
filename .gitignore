@@ -1,0 +1,34 @@
+# NUNCA subir datos del juego (Capcom) / NEVER commit game data
+*.bin
+*.cue
+*.sbi
+*.iso
+*.img
+*.chd
+*.pbp
+*.ecm
+*.exe
+SLES_022.11*
+SLES_orig*
+grabar_*.ps1
+comprobar_imagen.ps1
+sectors*.json
+dump_*
+*.ram
+*.sp
+build/
+
+# productos de compilacion / build products
+*.o
+*.elf
+src/dcmod.bin
+src/layout.json
+src/dc6.lua
+src/loader.ld
+src/loader2.bin
+__pycache__/
+
+# parches: van en Releases, no en el repo / patches go in Releases
+*.xdelta
+*.ppf
+*.zip
