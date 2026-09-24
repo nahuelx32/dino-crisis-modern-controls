@@ -48,7 +48,7 @@ El volcado de [Redump (disc 27940)](http://redump.org/disc/27940/), en formato `
 | `Dino Crisis (Spain) (Track 1).bin` | 387.317.952 | `29cda9847ddfb85e0b8c4f016654d171741798b7` |
 | `Dino Crisis (Spain) (Track 2).bin` | 37.396.800 | `d9f92af296360772e62caa4cb276de3fa74f5538` |
 
-Resultado esperado (Track 1 parcheado): SHA-1 `a808e0f1b9988bf6bbb4f387080148c9ad7dcff1`.
+Resultado esperado (Track 1 parcheado): SHA-1 `766c4da22e35777e3ba803022d001808c1f64a03`.
 
 ## Cómo aplicarlo
 
@@ -76,7 +76,7 @@ cd src
 sh build.sh                       # compila el parche (dcmod.bin)
 python3 gen.py                   # genera layout.json y dc6.lua
 python3 mkdisc.py "/ruta/Dino Crisis (Spain) (Track 1).bin"
-# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 a808e0f1… con este código)
+# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 766c4da2… con este código)
 ```
 
 `mkdisc.py` comprueba la imagen limpia, arma el ejecutable (blob comprimido con LZSS en tres zonas en cero, más un cargador propio) y reescribe solo los 18 sectores que cambian, con EDC/ECC recalculados. Para generar parches: `xdelta3 -e -9 -S djw -s original.bin parcheado.bin salida.xdelta` o `python3 mkppf.py original.bin parcheado.bin salida.ppf "descripción"`.
@@ -89,7 +89,7 @@ python3 mkdisc.py "/ruta/Dino Crisis (Spain) (Track 1).bin"
 | `src/loader2.S` | cargador: descomprime el blob al arrancar |
 | `src/mkdisc.py` | arma el Track 1 parcheado |
 | `lua/dc6.lua` | instala el parche en RAM desde la consola Lua de PCSX-Redux (`dofile(...)`, `dc6.install()`) |
-| `lua/dc_room.lua`, `dc_pk.lua`, `dc_intro.lua` | herramientas de investigación para PCSX-Redux |
+| `lua/dc_room.lua`, `dc_pk.lua`, `dc_intro.lua`, `dc_cam.lua` | herramientas de investigación para PCSX-Redux |
 | `docs/DESARROLLO.md` | notas de desarrollo (en español): direcciones, estructuras y cómo se midió cada cosa |
 
 ## Legal
@@ -144,7 +144,7 @@ The [Redump dump (disc 27940)](http://redump.org/disc/27940/), in `.bin`/`.cue` 
 | `Dino Crisis (Spain) (Track 1).bin` | 387,317,952 | `29cda9847ddfb85e0b8c4f016654d171741798b7` |
 | `Dino Crisis (Spain) (Track 2).bin` | 37,396,800 | `d9f92af296360772e62caa4cb276de3fa74f5538` |
 
-Expected result (patched Track 1): SHA-1 `a808e0f1b9988bf6bbb4f387080148c9ad7dcff1`.
+Expected result (patched Track 1): SHA-1 `766c4da22e35777e3ba803022d001808c1f64a03`.
 
 ## How to apply
 
@@ -172,7 +172,7 @@ cd src
 sh build.sh                       # builds the patch (dcmod.bin)
 python3 gen.py                    # generates layout.json and dc6.lua
 python3 mkdisc.py "/path/Dino Crisis (Spain) (Track 1).bin"
-# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 a808e0f1… with this code)
+# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 766c4da2… with this code)
 ```
 
 `mkdisc.py` checks the clean image, builds the executable (an LZSS-compressed blob stored in three zero-filled areas, plus a custom loader) and rewrites only the 18 sectors that change, with EDC/ECC recalculated. To make patches: `xdelta3 -e -9 -S djw -s original.bin patched.bin output.xdelta` or `python3 mkppf.py original.bin patched.bin output.ppf "description"`.
@@ -185,7 +185,7 @@ python3 mkdisc.py "/path/Dino Crisis (Spain) (Track 1).bin"
 | `src/loader2.S` | loader: decompresses the blob at boot |
 | `src/mkdisc.py` | builds the patched Track 1 |
 | `lua/dc6.lua` | installs the patch in RAM from the PCSX-Redux Lua console (`dofile(...)`, `dc6.install()`) |
-| `lua/dc_room.lua`, `dc_pk.lua`, `dc_intro.lua` | research tools for PCSX-Redux |
+| `lua/dc_room.lua`, `dc_pk.lua`, `dc_intro.lua`, `dc_cam.lua` | research tools for PCSX-Redux |
 | `docs/DESARROLLO.md` | development notes (in Spanish): addresses, structures and how everything was measured |
 
 ## Legal

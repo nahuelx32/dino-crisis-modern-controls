@@ -109,6 +109,17 @@ static short shInit, shNative = 1, shPrevR3, shYaw, shPitch;
 /* Cinematicas: se pasa a la camara original mientras dura la escena y al
  * terminar se vuelve al modo que tenia el jugador (con el mismo encuadre). */
 static char shLocked, shSaved;
+/* v6.12: cam+0x38 = desplazamiento lateral de la camara. La camara al hombro lo
+ * pone en -450; la camara fija (manejador 0) no lo usa, pero la vista de los
+ * puzles (manejador 2) si (medido con dc_cam.lua: solo +0x38 quedaba distinto
+ * y reponerlo arreglaba el encuadre). Se guarda al entrar al hombro y se repone
+ * al salir (R3, cinematica) o cuando la camara pasa a otro manejador. */
+static short sideSave;
+static char sideHeld;
+static void __attribute__((noinline)) sideRestore(void)
+{
+    if (sideHeld) { S16(CAMOBJ + 0x38) = sideSave; sideHeld = 0; }
+}
 /* Parametros de la camara al hombro, ajustables en vivo (dc6.cam):
  *   [0] alto del punto mirado sobre los pies  [1] distancia  [2] lado
  *   [3] inclinacion al recentrar (L3/R3)
@@ -759,7 +770,7 @@ void hookCamera(int s0)
         if (lk && !shLocked) { shSaved = shNative; shNative = 1; }
         if (!lk && shLocked) shNative = shSaved;
         shLocked = lk;
-        if (lk) { shPrevR3 = (U8(PAD + 2) & 0x04) == 0; return; }
+        if (lk) { sideRestore(); shPrevR3 = (U8(PAD + 2) & 0x04) == 0; return; }
     }
     /* R3 alterna con la camara original; L3 recentra detras de Regina (sirve
      * corriendo, sin tener que apuntar con R1). Bits del pad crudo +2,
@@ -775,7 +786,7 @@ void hookCamera(int s0)
         shPrevR3 = r3;
         if (l3) { shYaw = (pa + SH_YAWOFF) & 0xFFF; shPitch = camP[3]; }
     }
-    if (shNative) return;
+    if (shNative) { sideRestore(); return; }
     /* Puertas: resuelto sin codigo (en el disco la camara queda en la animacion). */
 
     /* v6.10: cortes de camara sin la pausa. Medido (dcr.freezeWho + desensamblado):
@@ -806,6 +817,7 @@ void hookCamera(int s0)
     else if (shPitch > SH_PMAX) shPitch = SH_PMAX;
     shYaw &= 0xFFF;
 
+    if (!sideHeld) { sideSave = S16(CAMOBJ + 0x38); sideHeld = 1; }
     S16(CAMOBJ + 0x28) = shPitch;
     S16(CAMOBJ + 0x2A) = shYaw;
     S16(CAMOBJ + 0x2C) = 0;
@@ -848,6 +860,9 @@ void hookCamera(int s0)
 void hookFrame(void)
 {
     unsigned g;
+    /* el enganche de camara solo corre con el manejador 0: si la camara pasa a
+     * otro (puzles), la reposicion del desplazamiento lateral se hace aca */
+    if (sideHeld && U8(CAMOBJ + 0x70) != 0) { S16(CAMOBJ + 0x38) = sideSave; sideHeld = 0; }
     if (U32(VID_SIG_AT) != VID_SIG) return;
     g = U32(0x1F800000u);
     if (g < 0x80000000u || g >= 0x80200000u) return;

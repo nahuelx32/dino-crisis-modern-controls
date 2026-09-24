@@ -1,4 +1,4 @@
-DINO CRISIS (PS1, PAL España) - CONTROLES MODERNOS v6.11
+DINO CRISIS (PS1, PAL España) - CONTROLES MODERNOS v6.12
 ========================================================
 
 Parche para la versión PAL española de Dino Crisis (SLES-02211).
@@ -7,15 +7,13 @@ NO incluye el juego: necesitás tu propia copia.
 CONTROLES
 - Stick izquierdo: mover en 360°, relativo a la cámara (sin controles tanque).
 - L2: apuntar.  R2: disparar.  R1 (mantenido): caminar.
-- Cuadrado: activa/desactiva el correr automático (arranca activado). Con el
-  correr automático apagado, Cuadrado corre mantenido, como en el original.
+- Cuadrado: activa/desactiva el correr automático (arranca activado)
 - X: acción, como en el original.
-- Stick derecho: mueve la cámara al hombro. Apuntando, gira la mira.
+- Triángulo: muestra/oculta el HUD.
 - R3: alterna entre la cámara al hombro y las cámaras fijas originales.
   El juego arranca con la cámara original.
+- Stick derecho: mueve la cámara al hombro. Apuntando, gira la mira.
 - L3: pone la cámara detrás de Regina.
-- Triángulo: muestra/oculta el HUD.
-- Start: saltea los videos (también los de la intro y los logos).
 
 QUÉ HACE
 - Movimiento libre en 360° con stick analógico, relativo a la cámara.
@@ -33,10 +31,13 @@ QUÉ HACE
   una espera parecida a la del original.
 - HUD: arma, cargador/reserva ("VACIO" cuando no quedan balas) y vitalidad
   con barra de color.
-- Start saltea todos los videos. La pantalla de advertencia del inicio no se
+- Start saltea todos los videos de apertura. La pantalla de advertencia del inicio no se
   saltea: ahí el juego hace su chequeo de protección.
 - En cinemáticas no se puede mover a Regina y se usa la cámara original.
-- Empujar objetos y demás acciones especiales funcionan como en el original.
+
+CAMBIOS EN v6.12
+- Corregido: después de usar la cámara al hombro, la vista de los puzles
+  quedaba corrida hasta salir de la habitación.
 
 IMAGEN REQUERIDA
 Pista de datos: "Dino Crisis (Spain) (Track 1).bin"
@@ -50,9 +51,9 @@ El Track 2 (audio) se usa sin tocar; su SHA-1 en Redump es
 d9f92af296360772e62caa4cb276de3fa74f5538.
 
 Resultado esperado (Track 1 parcheado):
-  CRC32 : 530C2DC7
-  MD5   : 3bd2aafedc96b6cfa20df9aaff9981d6
-  SHA-1 : a808e0f1b9988bf6bbb4f387080148c9ad7dcff1
+  CRC32 : 11B1D2AB
+  MD5   : c52f7a1b610ce297c01102301fde3415
+  SHA-1 : 766c4da22e35777e3ba803022d001808c1f64a03
 
 CÓMO APLICARLO
 Parcheá SOLO el Track 1 y hacé una copia antes.
@@ -75,5 +76,5 @@ IMPORTANTE
   savestates hechos con el juego sin parchear ni con otra versión del parche.
 - En vistas al hombro muy cargadas puede faltar alguna parte del escenario
   lejano durante ese momento: es el límite que evita que el juego se cuelgue.
-- Con la cámara al hombro, algún marco de puerta puede verse a través de una
+- Con la cámara al hombro, algún marco de puerta y otros objetos pueden verse a través de una
   pared: es un límite del orden de dibujo del motor original.

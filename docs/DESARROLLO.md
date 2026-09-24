@@ -8,13 +8,14 @@ Imagen de 2 pistas: `Track 1` (datos) + `Track 2` (audio) + `.cue` + `.sbi`.
 Protección **LibCrypt** — esto condiciona todo el método de parcheo.
 
 
-> **ESTADO ACTUAL: v6.11, VALIDADA** (septiembre 2026). Grabador:
-> `v6/grabar_v611.ps1` → `C:\dc\disco_v611\`. Ejecutable: `v6/SLES_022.11.v611`
-> (SHA-256 `f247bc8b…`). Fuente: `v6/dcmod.c` + `v6/stubs.S`. Resumen: **sección 20**
-> (v6.8), **21** (v6.9: Start saltea los videos), **22** (v6.10: la cámara al
-> hombro ve toda la sala) y **23** (v6.11: tope del buffer de dibujo + cargador
-> de tres tramos). Las secciones 1–14 son historia; donde contradigan a 20–23,
-> valen 20–23.
+> **ESTADO ACTUAL: v6.12, VALIDADA** (septiembre 2026). Publicada en GitHub
+> (`nahuelx32/dino-crisis-modern-controls`) con parches xdelta/PPF en Releases.
+> Ejecutable armado por `src/mkdisc.py` del repositorio (saca el original de la
+> imagen limpia). Resumen: **sección 20** (v6.8), **21** (v6.9: videos), **22**
+> (v6.10: la cámara al hombro ve toda la sala), **23** (v6.11: tope del buffer
+> de dibujo + cargador de tres tramos) y **24** (v6.12: encuadre de los puzles +
+> repositorio). Las secciones 1–14 son historia; donde contradigan a 20–24,
+> valen 20–24.
 
 ---
 
@@ -1883,3 +1884,63 @@ escribió el contenido **viejo** (fecha nueva, bytes viejos). Con
 5. Pasada completa del juego con v6.11 (atento a zonas donde el tope recorte
    algo visible: si molesta, recortar primero lo más lejano).
 6. La posible 5.ª batería del puzle.
+
+## 24. v6.12: encuadre de los puzles + repositorio (VALIDADA)
+
+### El problema
+
+Probando con el widescreen de DuckStation, Nahuel vio que en los puzles (vista
+de cerca, "Hay tres botones.") la imagen quedaba corrida después de haber usado
+la cámara al hombro, aunque se volviera a la original con R3; solo se
+arreglaba al salir y volver a entrar a la habitación. También pasaba entrando
+al puzle con la cámara al hombro activa.
+
+### Medido con `C:\dc\dc_cam.lua` (`dcc`)
+
+Fotos del objeto de cámara (`0x800B048C`, 0x100 bytes) y de las banderas de
+las 36 mallas en el puzle, sin haber usado R3 (`bien`) y después (`mal`). En
+el puzle: manejador `cam+0x70 = 2`, jugador `+0x3C = 04`.
+
+- Distinto: `cam+0x38` 0 → −450 (y `cam+0x14/16`, el mismo −450 ya calculado
+  por el juego en 32 bits), más `+0x6A`, `+0x7C`, `+0x80` (estado del puzle).
+- Mallas: ninguna distinta.
+- `dcc.put('bien')` (repone `+0x28..+0x3E`) arregló la vista en el momento →
+  la causa es **`cam+0x38`**, el desplazamiento lateral: la cámara al hombro
+  lo pone en −450 (`camCur[2]`), la cámara fija (manejador 0) no lo usa y la
+  vista de puzle (manejador 2) sí. `+0x14` se recalcula cada cuadro.
+- Mi enganche de cámara (`0x8001F3D8`) está dentro del manejador 0: con el
+  manejador 2 no corre.
+
+### El arreglo
+
+- `hookCamera`: el primer cuadro con la cámara al hombro guarda `cam+0x38`
+  (`sideSave`, `sideHeld = 1`); al volver a la original (R3) o al empezar una
+  cinemática se repone (`sideRestore`).
+- `hookFrame` (corre todos los cuadros): si `sideHeld` y `cam+0x70 != 0`, se
+  repone ahí (escrito en línea para que `hookFrame` siga siendo hoja, sin pila;
+  llamando a la función, gcc le armaba un marco de pila y duplicaba código).
+- Al volver del puzle con la cámara al hombro, se vuelve a guardar el valor.
+- Blob 7504 bytes → LZSS 5112; quedan **684** bytes comprimidos. Siguen siendo
+  18 sectores (los mismos).
+- Validado por Nahuel en RAM: R3 y volver, puzle con la cámara al hombro
+  activa, cinemática.
+
+### Track 1 v6.12
+
+SHA-1 `766c4da22e35777e3ba803022d001808c1f64a03`, MD5
+`c52f7a1b610ce297c01102301fde3415`, CRC32 `11B1D2AB`. Parches:
+`DinoCrisis_Spain_ControlesModernos_v6.12.xdelta` (9604 B) y `.ppf` (10681 B)
+en `C:\dc\release\`, con `LEEME_v6.12.txt` y el zip.
+
+### Repositorio en GitHub
+
+`https://github.com/nahuelx32/dino-crisis-modern-controls` (MIT). `src/`
+(código + `mkdisc.py`, `edcecc.py`, `lzss.py`, `mkppf.py`), `lua/`, `docs/`
+(`DESARROLLO.md` = este documento, `LEEME.txt`). `mkdisc.py` del repositorio
+recibe el Track 1 limpio, comprueba SHA-1 del volcado de Redump y SHA-256 del
+ejecutable, arma todo y (con `unicorn`) ejecuta el cargador; compilado desde
+cero reproduce el Track 1 de la release byte a byte. Revisado: ningún bloque de
+64 bytes del ejecutable original aparece en los archivos del repositorio.
+El `.gitignore` bloquea imágenes, ejecutables, `grabar_*.ps1`, `sectors*.json`
+y volcados. Esta sesión no puede subir al repositorio (no está entre los
+repositorios autorizados); Nahuel sube con GitHub Desktop.
