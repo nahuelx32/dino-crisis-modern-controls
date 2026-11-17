@@ -4,7 +4,7 @@
 
 **IMPORTANTE este proyecto originalmente estaba destinado a ser de uso personal como un simple regalo a otra persona, no pretende ser una versión mejorada, reemplazar y/o ser un proyecto completo de dino crisis de ps1**
 
-Parche para **Dino Crisis** (PlayStation, versión PAL española, **SLES-02211**) que reemplaza los controles tanque por un control moderno relativo a la cámara y agrega una cámara en tercera persona al hombro. Se aplica sobre tu propia imagen del juego; este repositorio **no incluye ninguna parte del juego**.
+Parche para **Dino Crisis** (PlayStation, versión PAL española, **SLES-02211**) que agrega un control moderno relativo a la cámara, dos cámaras en tercera persona (al hombro y de espalda) y un menú dentro del juego para elegir cada cosa, incluidos los controles tanque originales. Se aplica sobre tu propia imagen del juego; este repositorio **no incluye ninguna parte del juego**.
 
 <!-- Capturas: agregarlas en docs/img/ y enlazarlas acá, por ejemplo:
 ![Cámara al hombro](docs/img/hombro.png) -->
@@ -14,30 +14,35 @@ Parche para **Dino Crisis** (PlayStation, versión PAL española, **SLES-02211**
 ## Qué hace
 
 - Movimiento libre en 360° con stick analógico, relativo a la cámara. El modo analógico se activa solo.
-- Cámara en tercera persona al hombro (R3 alterna con las cámaras fijas originales):
+- **Menú dentro del juego** (Select → OPCIONES → `CONTROL Y CAMARA`, también en el título): controles moderno o tanque, cámara original, al hombro o de espalda, HUD y correr automático. Las opciones se guardan con la partida.
+- Dos cámaras en tercera persona, al hombro y de espalda (R3 pasa de una a otra y a las cámaras fijas originales):
   - se ve toda la sala y los dinosaurios, no solo lo que entra en la cámara fija;
   - los cambios de cámara no pausan el juego en cámara al hombro;
   - láseres y luces visibles desde los dos lados.
 - Apuntado de doble stick: L2 apunta, R2 dispara, el stick derecho gira la mira.
 - Disparo cancelable, con una espera entre disparos parecida a la del original.
-- Correr automático (Cuadrado lo activa o desactiva; R1 camina). (inspirado en dino crisis 2)
-- HUD con arma, cargador/reserva (`VACIO` sin balas) y vitalidad; Triángulo lo activa o desactiva. (inspirado en VMU de la versión de Dreamcast)
+- Correr automático (R1 camina; se activa o desactiva en el menú). (inspirado en dino crisis 2)
+- HUD con arma, cargador/reserva (`VACIO` sin balas) y vitalidad; se activa o desactiva en el menú. (inspirado en VMU de la versión de Dreamcast)
+- Controles tanque: los originales del juego, como opción. El stick izquierdo hace de cruceta, y la cámara elegida y el HUD siguen funcionando.
 - Start saltea todos los videos de apertura. La pantalla de advertencia del inicio no se saltea: ahí el juego hace su chequeo de protección.
 - Cinemáticas, empujar objetos y demás acciones funcionan como en el original.
 
 ## Controles
+
+Con el control moderno:
 
 | Botón | Acción |
 |---|---|
 | Stick izquierdo | mover (360°, relativo a la cámara) |
 | L2 / R2 | apuntar / disparar |
 | R1 (mantenido) | caminar |
-| Cuadrado | correr automático sí/no |
 | X | acción |
-| Stick derecho | cámara al hombro; apuntando, gira la mira |
-| R3 | cámara al hombro ↔ cámaras originales |
+| Stick derecho | cámara (hombro o espalda); apuntando, gira la mira |
+| R3 | cámara siguiente: original → hombro → espalda |
 | L3 | cámara detrás de Regina |
-| Triángulo | mostrar/ocultar el HUD |
+| Select | menú OPCIONES del juego, con `CONTROL Y CAMARA` |
+
+Con CORRER AUTO en NO, Cuadrado o Triángulo corren mientras se mantienen, como en el original. Con los controles tanque valen los botones originales; R3, L3 y el stick derecho siguen manejando la cámara.
 
 ## Imagen necesaria
 
@@ -48,7 +53,7 @@ El volcado de [Redump (disc 27940)](http://redump.org/disc/27940/), en formato `
 | `Dino Crisis (Spain) (Track 1).bin` | 387.317.952 | `29cda9847ddfb85e0b8c4f016654d171741798b7` |
 | `Dino Crisis (Spain) (Track 2).bin` | 37.396.800 | `d9f92af296360772e62caa4cb276de3fa74f5538` |
 
-Resultado esperado (Track 1 parcheado): SHA-1 `766c4da22e35777e3ba803022d001808c1f64a03`.
+Resultado esperado (Track 1 parcheado): SHA-1 `34fa4930c4a5dc4f7b433ea771e64b4b14385775`.
 
 ## Cómo aplicarlo
 
@@ -63,7 +68,7 @@ El Track 2, el `.cue` y el `.sbi` se usan tal cual: el parche no mueve ningún s
 
 - Probado en PCSX-Redux y DuckStation. No probado en consola real: para consola o PS2 (POPStarter) hay que quitar LibCrypt con otra herramienta antes de aplicar el parche.
 - Las partidas de memory card sirven. Los savestates de otra versión no.
-- En vistas al hombro muy cargadas puede faltar parte del escenario lejano: es el límite que evita que el juego se cuelgue. Algún marco de puerta u otros objetos del escenario en una menor medida ocasionalmente pueden verse a través de una pared (límite del orden de dibujo del motor).
+- En vistas al hombro o de espalda muy cargadas puede faltar parte del escenario lejano: es el límite que evita que el juego se cuelgue. Algún marco de puerta u otros objetos del escenario en una menor medida ocasionalmente pueden verse a través de una pared (límite del orden de dibujo del motor).
 
 Más detalles en [docs/LEEME.txt](docs/LEEME.txt).
 
@@ -76,18 +81,19 @@ cd src
 sh build.sh                       # compila el parche (dcmod.bin)
 python3 gen.py                   # genera layout.json y dc6.lua
 python3 mkdisc.py "/ruta/Dino Crisis (Spain) (Track 1).bin"
-# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 766c4da2… con este código)
+# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 34fa4930… con este código)
 ```
 
-`mkdisc.py` comprueba la imagen limpia, arma el ejecutable (blob comprimido con LZSS en tres zonas en cero, más un cargador propio) y reescribe solo los 18 sectores que cambian, con EDC/ECC recalculados. Para generar parches: `xdelta3 -e -9 -S djw -s original.bin parcheado.bin salida.xdelta` o `python3 mkppf.py original.bin parcheado.bin salida.ppf "descripción"`.
+`mkdisc.py` comprueba la imagen limpia, arma el ejecutable (blob comprimido con LZSS, repartido en zonas que en el original son ceros, más un cargador propio que las vuelve a dejar en cero) y reescribe solo los 19 sectores que cambian, con EDC/ECC recalculados. `emu.py` y `menutest.py` son pruebas con Unicorn: ejecutan el cargador y el menú real del juego ya parchado. Para generar parches: `xdelta3 -e -9 -S djw -s original.bin parcheado.bin salida.xdelta` o `python3 mkppf.py original.bin parcheado.bin salida.ppf "descripción"`.
 
 | Archivo | Qué es |
 |---|---|
 | `src/dcmod.c` | control, cámara, HUD, visibilidad (C, MIPS R3000) |
 | `src/stubs.S` | enganches en ensamblador |
 | `src/gen.py` | lista de enganches → `layout.json` y `dc6.lua` |
-| `src/loader2.S` | cargador: descomprime el blob al arrancar |
+| `src/loader3.S` | cargador: descomprime el blob al arrancar (tabla de tramos) |
 | `src/mkdisc.py` | arma el Track 1 parcheado |
+| `src/emu.py`, `src/menutest.py` | pruebas con Unicorn: el cargador y el menú OPCIONES del juego con el parche |
 | `lua/dc6.lua` | instala el parche en RAM desde la consola Lua de PCSX-Redux (`dofile(...)`, `dc6.install()`) |
 | `lua/dc_room.lua`, `dc_pk.lua`, `dc_intro.lua`, `dc_cam.lua` | herramientas de investigación para PCSX-Redux |
 | `docs/DESARROLLO.md` | notas de desarrollo (en español): direcciones, estructuras y cómo se midió cada cosa |
@@ -103,37 +109,42 @@ El código de este repositorio es MIT (ver [LICENSE](LICENSE)). *Dino Crisis* es
 
 **IMPORTANT: this project was originally meant for personal use, as a simple gift for someone. It does not aim to be an improved version, to replace the original, or to be a complete Dino Crisis PS1 project.**
 
-A patch for **Dino Crisis** (PlayStation, Spanish PAL release, **SLES-02211**) that replaces tank controls with modern camera-relative movement and adds an over-the-shoulder third-person camera. It is applied to your own copy of the game; this repository **does not include any part of the game**.
+A patch for **Dino Crisis** (PlayStation, Spanish PAL release, **SLES-02211**) that adds modern camera-relative movement, two third-person cameras (over the shoulder and behind the back) and an in-game menu to choose each of them, including the original tank controls. It is applied to your own copy of the game; this repository **does not include any part of the game**.
 
 **Download:** the patch (`.xdelta` and `.ppf`) is in [Releases](../../releases).
 
 ## Features
 
 - Free 360° analog movement, relative to the camera. Analog mode is enabled automatically.
-- Over-the-shoulder third-person camera (R3 toggles it with the original fixed cameras):
+- **In-game menu** (Select → OPCIONES → `CONTROL Y CAMARA`, also on the title screen): modern or tank controls (`MODERNO` / `TANQUE`), original, shoulder or back camera (`ORIGINAL` / `HOMBRO` / `ESPALDA`), HUD and auto-run (`CORRER AUTO`). The options are saved with your game.
+- Two third-person cameras, over the shoulder and behind the back (R3 cycles through them and the original fixed cameras):
   - the whole room and the dinosaurs are visible, not only what the fixed camera would show;
   - camera changes don't pause the game in shoulder view;
   - lasers and lights are visible from both sides.
 - Twin-stick aiming: L2 aims, R2 fires, the right stick turns the aim.
 - Cancelable shots, with a delay between shots similar to the original.
-- Auto-run (Square toggles it; R1 walks). (Inspired by Dino Crisis 2)
-- HUD with weapon, magazine/reserve (`VACIO` = out of ammo) and health; Triangle toggles it. (Inspired by the VMU display in the Dreamcast version)
+- Auto-run (R1 walks; turned on or off in the menu). (Inspired by Dino Crisis 2)
+- HUD with weapon, magazine/reserve (`VACIO` = out of ammo) and health; turned on or off in the menu. (Inspired by the VMU display in the Dreamcast version)
+- Tank controls: the game's original controls, as an option. The left stick works as the D-pad, and the chosen camera and the HUD keep working.
 - Start skips all opening videos. The warning screen at startup can't be skipped: that's where the game runs its copy-protection check.
 - Cutscenes, pushing objects and other actions work as in the original.
 
 ## Controls
+
+With modern controls:
 
 | Button | Action |
 |---|---|
 | Left stick | move (360°, camera-relative) |
 | L2 / R2 | aim / fire |
 | R1 (hold) | walk |
-| Square | toggle auto-run |
 | X | action |
-| Right stick | shoulder camera; while aiming, turns the aim |
-| R3 | shoulder camera ↔ original cameras |
+| Right stick | camera (shoulder or back); while aiming, turns the aim |
+| R3 | next camera: original → shoulder → back |
 | L3 | camera behind Regina |
-| Triangle | show/hide HUD |
+| Select | the game's OPCIONES menu, with `CONTROL Y CAMARA` |
+
+With `CORRER AUTO` set to `NO`, Square or Triangle run while held, as in the original. With tank controls the original buttons apply; R3, L3 and the right stick still drive the camera.
 
 ## Required image
 
@@ -144,7 +155,7 @@ The [Redump dump (disc 27940)](http://redump.org/disc/27940/), in `.bin`/`.cue` 
 | `Dino Crisis (Spain) (Track 1).bin` | 387,317,952 | `29cda9847ddfb85e0b8c4f016654d171741798b7` |
 | `Dino Crisis (Spain) (Track 2).bin` | 37,396,800 | `d9f92af296360772e62caa4cb276de3fa74f5538` |
 
-Expected result (patched Track 1): SHA-1 `766c4da22e35777e3ba803022d001808c1f64a03`.
+Expected result (patched Track 1): SHA-1 `34fa4930c4a5dc4f7b433ea771e64b4b14385775`.
 
 ## How to apply
 
@@ -159,7 +170,7 @@ Use Track 2, the `.cue` and the `.sbi` as they are: the patch doesn't move any s
 
 - Tested on PCSX-Redux and DuckStation. Not tested on real hardware: for a console or PS2 (POPStarter), LibCrypt must be removed with a separate tool before applying the patch.
 - Memory card saves work. Savestates from other versions don't.
-- In very busy shoulder-camera views, some distant scenery may be missing: this is the limit that keeps the game from freezing. Occasionally a door frame, or to a lesser extent other scenery objects, can show through a wall (a limit of the engine's draw order).
+- In very busy shoulder or back camera views, some distant scenery may be missing: this is the limit that keeps the game from freezing. Occasionally a door frame, or to a lesser extent other scenery objects, can show through a wall (a limit of the engine's draw order).
 
 More details (in Spanish) in [docs/LEEME.txt](docs/LEEME.txt).
 
@@ -172,18 +183,19 @@ cd src
 sh build.sh                       # builds the patch (dcmod.bin)
 python3 gen.py                    # generates layout.json and dc6.lua
 python3 mkdisc.py "/path/Dino Crisis (Spain) (Track 1).bin"
-# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 766c4da2… with this code)
+# -> build/Dino Crisis (Spain) (Track 1).bin  (SHA-1 34fa4930… with this code)
 ```
 
-`mkdisc.py` checks the clean image, builds the executable (an LZSS-compressed blob stored in three zero-filled areas, plus a custom loader) and rewrites only the 18 sectors that change, with EDC/ECC recalculated. To make patches: `xdelta3 -e -9 -S djw -s original.bin patched.bin output.xdelta` or `python3 mkppf.py original.bin patched.bin output.ppf "description"`.
+`mkdisc.py` checks the clean image, builds the executable (an LZSS-compressed blob spread over areas that are zero-filled in the original, plus a custom loader that zeroes them again) and rewrites only the 19 sectors that change, with EDC/ECC recalculated. `emu.py` and `menutest.py` are Unicorn tests: they run the loader and the game's real menu code with the patch applied. To make patches: `xdelta3 -e -9 -S djw -s original.bin patched.bin output.xdelta` or `python3 mkppf.py original.bin patched.bin output.ppf "description"`.
 
 | File | What it is |
 |---|---|
 | `src/dcmod.c` | controls, camera, HUD, visibility (C, MIPS R3000) |
 | `src/stubs.S` | assembly hooks |
 | `src/gen.py` | hook list → `layout.json` and `dc6.lua` |
-| `src/loader2.S` | loader: decompresses the blob at boot |
+| `src/loader3.S` | loader: decompresses the blob at boot (segment table) |
 | `src/mkdisc.py` | builds the patched Track 1 |
+| `src/emu.py`, `src/menutest.py` | Unicorn tests: the loader and the game's OPCIONES menu with the patch |
 | `lua/dc6.lua` | installs the patch in RAM from the PCSX-Redux Lua console (`dofile(...)`, `dc6.install()`) |
 | `lua/dc_room.lua`, `dc_pk.lua`, `dc_intro.lua`, `dc_cam.lua` | research tools for PCSX-Redux |
 | `docs/DESARROLLO.md` | development notes (in Spanish): addresses, structures and how everything was measured |

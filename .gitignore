@@ -25,7 +25,7 @@ src/dcmod.bin
 src/layout.json
 src/dc6.lua
 src/loader.ld
-src/loader2.bin
+src/loader3.bin
 __pycache__/
 
 # parches: van en Releases, no en el repo / patches go in Releases

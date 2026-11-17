@@ -32,6 +32,27 @@ HOOKS+=[
  (0x8006B5C4,[0x30420003,0x144300BE],[0x30420003,0x144300BE]),
  (0x8006B174,[0x30420002,0x1040001E],[0x30420002,0x1040001E]),
 ]
+# v6.13: menu. Palabras del juego cambiadas EN EL LUGAR (no son saltos al blob):
+#  0x8004395C  el dibujo del menu OPCIONES deja de copiar su tabla de 6 entradas
+#              a la pila y recorre menuTab (7 entradas) del blob
+#  0x80043A14  ... 7 entradas en vez de 6
+#  0x80043874  el cursor baja hasta la entrada 5 (antes 4)
+#  0x80043814 / 0x80043904  el despacho de submenus usa menuHnd (6 manejadores)
+T=syms['menuTab']; H=syms['menuHnd']
+hiA=lambda a: ((a+0x8000)>>16)&0xFFFF      # mitad alta para lui + addiu (con signo)
+HOOKS+=[
+ (0x8004395C,[0x27A30010,0x3C028001,0x244206C4,0x24440030,0xAFBF0054,0xAFB3004C,0xAFB20048,0xAFB10044,0xAFB00040,0x8C480000],
+             [0xAFBF0054,0xAFB3004C,0xAFB20048,0xAFB10044,0xAFB00040,
+              0x3C130000|(T>>16),            # lui   s3, hi(menuTab)
+              0x36730000|(T&0xFFFF),         # ori   s3, s3, lo(menuTab)
+              0x00009021,                    # move  s2, zero
+              0x08000000|((0x800439B8&0x3FFFFFF)>>2),   # j 0x800439B8 (lui s0,0x80 y el lazo)
+              0x26710001]),                  # addiu s1, s3, 1   (delay slot)
+ (0x80043A14,[0x2E420006],[0x2E420007]),     # sltiu v0, s2, 7
+ (0x80043874,[0x2C420004],[0x2C420005]),     # sltiu v0, v0, 5
+ (0x80043814,[0x3C028009],[0x3C020000|hiA(H)]),         # lui   v0, hi(menuHnd)
+ (0x80043904,[0x2442535C],[0x24420000|(H&0xFFFF)]),     # addiu v0, v0, lo(menuHnd)
+]
 words=struct.unpack('<%dI'%(len(blob)//4),blob)
 L=[]
 L.append('-- dc6.lua: GENERADO por gen.py. Instala el parche MIPS v6.6 (con HUD) en RAM para probarlo')
@@ -67,7 +88,8 @@ function dc6.install()
       local op=bit.band(g,0xFC000000)
       local tgt=bit.band(g,0x03FFFFFF)*4
       local mine=(op==0x0C000000 or op==0x08000000) and tgt>=0x0D8000 and tgt<0x0E0000
-      if g~=w and g~=h[3][i] and g~=0 and not mine then
+      local same=bit.band(g,0xFFFF0000)==bit.band(h[3][i],0xFFFF0000)
+      if g~=w and g~=h[3][i] and g~=0 and not mine and not same then
         print(string.format('[dc6] %08X no es lo esperado (%08X): nada instalado',h[1]+(i-1)*4,g)) return
       end
     end
@@ -117,9 +139,33 @@ function dc6.pos(k,x,y,al)
     local der=i<3 and bit.band(rd8(@HUDRIGHT@),bit.lshift(1,i))~=0
     out[#out+1]=string.format('%s=%d,%d%s',n,rds16(@HUDPOS@+i*4),rds16(@HUDPOS@+i*4+2),der and ' der' or '')
   end
-  print('[dc6] HUD: '..table.concat(out,'  ')..(rd8(@HUDOFF@)==0 and '' or '  (oculto)'))
+  print('[dc6] HUD: '..table.concat(out,'  ')..(bit.band(rd8(OPTA),8)==0 and '' or '  (oculto)'))
 end
-function dc6.hud(on) if on ~= nil then wr8(@HUDOFF@, on and 0 or 1) end dc6.pos() end
+-- OPCIONES (v6.13): un byte del bloque de configuracion del juego (0x800BA6AD),
+-- el mismo que cambia el menu OPCIONES > CONTROL Y CAMARA y que se guarda con la partida.
+--   dc6.opt()                      lista
+--   dc6.opt('control','tanque')    'moderno' | 'tanque'
+--   dc6.opt('camara','espalda')    'original' | 'hombro' | 'espalda'
+--   dc6.opt('hud','no')            'si' | 'no'
+--   dc6.opt('correr','no')         'si' | 'no'
+local OPTA=0x800BA6AD
+local OPTS={control={0,1,{'moderno','tanque'}},camara={1,3,{'original','hombro','espalda'}},hud={3,1,{'si','no'}},correr={4,1,{'si','no'}}}
+function dc6.opt(k,v)
+  if k then
+    local o=OPTS[k] if not o then print('[dc6] opciones: control camara hud correr') return end
+    local n=nil for i,name in ipairs(o[3]) do if name==v then n=i-1 end end
+    if n==nil then print('[dc6] valores: '..table.concat(o[3],' ')) return end
+    local cur=rd8(OPTA)
+    wr8(OPTA, bit.bor(bit.band(cur, bit.bnot(bit.lshift(o[2],o[1]))), bit.lshift(n,o[1])))
+  end
+  local cur=rd8(OPTA) local out={}
+  for _,name in ipairs({'control','camara','hud','correr'}) do
+    local o=OPTS[name] local val=bit.band(bit.rshift(cur,o[1]),o[2])
+    out[#out+1]=name..'='..(o[3][val+1] or '?')
+  end
+  print(string.format('[dc6] opciones (%02X): %s',cur,table.concat(out,'  ')))
+end
+function dc6.hud(on) if on ~= nil then dc6.opt('hud', on and 'si' or 'no') else dc6.opt() end end
 -- CAMARA AL HOMBRO en vivo (unidades del juego; 4096 = una vuelta en la inclinacion).
 --   dc6.cam()                    lista
 --   dc6.cam('alto', 1300)        punto mirado sobre los pies (mas = mira mas arriba)
@@ -127,9 +173,12 @@ function dc6.hud(on) if on ~= nil then wr8(@HUDOFF@, on and 0 or 1) end dc6.pos(
 --   dc6.cam('lado', -350)        corrimiento lateral (negativo = Regina a la izquierda)
 --   dc6.cam('incl', 120)         inclinacion al recentrar con L3 / R3
 --   dc6.cam('a_alto', v) dc6.cam('a_dist', v) dc6.cam('a_lado', v)   lo mismo APUNTANDO (L2)
+--   Camara de ESPALDA: los mismos con e_ adelante (e_alto e_dist e_lado e_incl) y
+--   ea_ para apuntando (ea_alto ea_dist ea_lado).
 -- Alto, distancia y lado se ven al instante; la inclinacion, al apretar L3.
-local CAMN={alto=0,dist=1,lado=2,incl=3,a_alto=4,a_dist=5,a_lado=6}
-local CAMO={'alto','dist','lado','incl','a_alto','a_dist','a_lado'}
+local CAMN={alto=0,dist=1,lado=2,incl=3,a_alto=4,a_dist=5,a_lado=6,
+            e_alto=7,e_dist=8,e_lado=9,e_incl=10,ea_alto=11,ea_dist=12,ea_lado=13}
+local CAMO={'alto','dist','lado','incl','a_alto','a_dist','a_lado','e_alto','e_dist','e_lado','e_incl','ea_alto','ea_dist','ea_lado'}
 function dc6.cam(k,v)
   if k then
     local i=CAMN[k] if not i then print('[dc6] parametros: '..table.concat(CAMO,' ')) return end
@@ -137,14 +186,14 @@ function dc6.cam(k,v)
   end
   local out={}
   for _,n in ipairs(CAMO) do out[#out+1]=string.format('%s=%d',n,rds16(@CAMP@+CAMN[n]*2)) end
-  print('[dc6] camara: '..table.concat(out,'  '))
+  print('[dc6] camara: '..table.concat(out,'  ',1,7))
+  print('[dc6] espalda: '..table.concat(out,'  ',8,14))
 end
--- CORRER: Cuadrado alterna el correr automatico. dc6.run() dice el estado.
-function dc6.run(on) if on ~= nil then wr8(@RUNAUTO@, on and 1 or 0) end
-  print('[dc6] correr automatico: '..(rd8(@RUNAUTO@)~=0 and 'SI' or 'NO')) end
+-- CORRER automatico: ahora es una opcion del menu. dc6.run() / dc6.run(true/false)
+function dc6.run(on) if on ~= nil then dc6.opt('correr', on and 'si' or 'no') else dc6.opt() end end
 -- DIAGNOSTICO del HUD: registra por Vsync cuando el HUD NO se dibujo y por que.
 --   dc6.hudWhy()  -> jugar / cruzar el cambio de camara   dc6.hudWhy() otra vez = cortar
-local WHY={[0]='dibujo',[1]='OT invalida',[2]='misma OT que el frame anterior',[3]='cinematica (bandera de bloqueo)',[4]='oculto con Triangulo'}
+local WHY={[0]='dibujo',[1]='OT invalida',[2]='misma OT que el frame anterior',[3]='cinematica (bandera de bloqueo)',[4]='oculto (opcion HUD = no)'}
 local whyL=nil
 function dc6.hudWhy()
   if whyL then whyL:remove() whyL=nil print('[dc6] hudWhy cortado') return end
@@ -173,7 +222,7 @@ function dc6.hudWhy()
   end)
   print('[dc6] hudWhy: solo imprime cuando cambia. Cruza un cambio de camara y despues dc6.hudWhy() para cortar.')
 end
-print('[dc6] listo: dc6.install()  dc6.remove()  dc6.verify()  dc6.cut(n)  dc6.pump(n)  dc6.cuts()  dc6.pos(k,x,y[,\"der\"])  dc6.hud(true/false)  dc6.cam(k,v)  dc6.run()  dc6.hudWhy()')'''.replace('@CODEEND@','0x%X'%syms['_etext']).replace('@HUDPOS@','0x%X'%syms['hudPos']).replace('@HUDRIGHT@','0x%X'%syms['hudRight']).replace('@HUDOFF@','0x%X'%syms['hudOff']).replace('@CAMP@','0x%X'%syms['camP']).replace('@RUNAUTO@','0x%X'%syms['runAuto']).replace('@HUDCNT@','0x%X'%syms['hudCnt']).replace('@HUDWHY@','0x%X'%syms['hudWhy']).replace('@CAMCNT@','0x%X'%syms['camCnt']).replace('@BASE@','0x%X'%BASE).replace('@SORTTGT@','0x%X'%syms['sortTgt'])
+print('[dc6] listo: dc6.install()  dc6.remove()  dc6.verify()  dc6.cut(n)  dc6.pump(n)  dc6.cuts()  dc6.pos(k,x,y[,\"der\"])  dc6.hud(true/false)  dc6.cam(k,v)  dc6.run()  dc6.opt(k,v)  dc6.hudWhy()')'''.replace('@CODEEND@','0x%X'%syms['_etext']).replace('@HUDPOS@','0x%X'%syms['hudPos']).replace('@HUDRIGHT@','0x%X'%syms['hudRight']).replace('@CAMP@','0x%X'%syms['camP']).replace('@HUDCNT@','0x%X'%syms['hudCnt']).replace('@HUDWHY@','0x%X'%syms['hudWhy']).replace('@CAMCNT@','0x%X'%syms['camCnt']).replace('@BASE@','0x%X'%BASE).replace('@SORTTGT@','0x%X'%syms['sortTgt'])
   .replace('@SHOTCUT@','0x%X'%syms['shotCut']).replace('@PUMPCUT@','0x%X'%syms['pumpCut']))
 open('dc6.lua','w').write('\n'.join(L)+'\n')
 import json; json.dump({'syms':syms,'hooks':HOOKS,'size':len(blob)},open('layout.json','w'),indent=1)

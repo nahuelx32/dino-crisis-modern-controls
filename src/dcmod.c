@@ -1,6 +1,11 @@
 /*
  * dcmod.c  --  Dino Crisis (SLES-02211): control moderno, version 6 (MIPS)
  *
+ * v6.13: MENU. Entrada nueva "CONTROL Y CAMARA" en el menu OPCIONES del juego
+ *        (Select): controles moderno/tanque, camara original/hombro/espalda,
+ *        HUD si/no, correr automatico si/no. Las opciones viven en un byte
+ *        libre del bloque de configuracion que el juego guarda en la memory
+ *        card. Triangulo y Cuadrado ya no alternan nada.
  * v6.10: con la camara al hombro: sin buffer de corte, cortes de camara sin
  *        la pausa de 6 cuadros, y se ven las mallas que esconde la CAMARA (no
  *        las que esconde el estado: laseres apagados, puzzles) y
@@ -64,6 +69,7 @@ static inline void *P(unsigned a) {
 /* ------------------------------------------------------------ ajustes */
 #define DEAD        30
 #define DEAD2       (DEAD * DEAD)
+#define TANK_DEAD   60            /* stick como cruceta en modo tanque */
 #define TURN        280
 #define CUTTHRESH   300
 #define AIMTURN     90
@@ -94,6 +100,25 @@ static inline void *P(unsigned a) {
 #define FREEZE_WORD 0x800B0414u
 #define FREEZE_BIT  0x00100000u
 
+/* ------------------------------------------------------------ opciones (v6.13)
+ * El juego guarda su configuracion en 12 bytes, G+0xA2CC..0xA2D7 (G =
+ * 0x800B03D8): 0x8003FBF8 los copia como 3 palabras al bloque de la partida
+ * ([0x800BAF2C]+0x844) y 0x800421D4 los trae de vuelta; 0x80045270 pone los
+ * valores de fabrica. Usa CC..D4; D5, D6 y D7 no los lee ni escribe nadie
+ * (buscado en todo el ejecutable), pero viajan con la tercera palabra.
+ * G+0xA2D5 = 0x800BA6AD es nuestro byte de opciones: se guarda y se carga con
+ * la partida sin tocar nada. Todo en 0 = como venia el parche:
+ *   bit 0      controles   0 moderno   1 tanque (los originales del juego)
+ *   bits 1-2   camara      0 original  1 hombro  2 espalda
+ *   bit 3      HUD         0 si        1 no
+ *   bit 4      correr auto 0 si        1 no   (solo con el control moderno) */
+#define OPT        0x800BA6ADu
+#define OPT_TANK   0x01
+#define OPT_HUDOFF 0x08
+#define OPT_NORUN  0x10
+#define optGet()   (U8(OPT))
+#define optCam()   ((optGet() >> 1) & 3)
+
 /* ------------------------------------------------------------ estado */
 int   sortOn;                 /* 1 = camara al hombro activa: orden de dibujo por Z
                                (stubSort) y todas las mallas del cuarto (stubVis) */
@@ -103,12 +128,13 @@ int   inCam;                  /* != 0 mientras corre el guion de la camara  */
 static short cutLast = NONE, cutHeld = NONE, cutHeldStick;
 static short strafeOn, strafeM, strafeB;
 
-/* shNative = 1: se arranca con la camara ORIGINAL; R3/L3 pasa al hombro.
- * (Muchas partidas empiezan con una cinematica encuadrada por el juego.) */
-static short shInit, shNative = 1, shPrevR3, shYaw, shPitch;
-/* Cinematicas: se pasa a la camara original mientras dura la escena y al
- * terminar se vuelve al modo que tenia el jugador (con el mismo encuadre). */
-static char shLocked, shSaved;
+/* La camara sale de las opciones (optCam): 0 = la ORIGINAL (asi se arranca:
+ * muchas partidas empiezan con una cinematica encuadrada por el juego),
+ * 1 = hombro, 2 = espalda. R3 pasa a la siguiente; L3 recentra.
+ * Cinematicas: camara original mientras dura la escena; al terminar vuelve la
+ * elegida con el mismo encuadre. camMode = la que se uso el ultimo cuadro. */
+static short shPrevR3, shYaw, shPitch;
+static char camMode;
 /* v6.12: cam+0x38 = desplazamiento lateral de la camara. La camara al hombro lo
  * pone en -450; la camara fija (manejador 0) no lo usa, pero la vista de los
  * puzles (manejador 2) si (medido con dc_cam.lua: solo +0x38 quedaba distinto
@@ -120,12 +146,14 @@ static void __attribute__((noinline)) sideRestore(void)
 {
     if (sideHeld) { S16(CAMOBJ + 0x38) = sideSave; sideHeld = 0; }
 }
-/* Parametros de la camara al hombro, ajustables en vivo (dc6.cam):
+/* Parametros de las camaras propias, ajustables en vivo (dc6.cam). Dos juegos
+ * de 7: [0..6] hombro, [7..13] espalda. En cada uno:
  *   [0] alto del punto mirado sobre los pies  [1] distancia  [2] lado
  *   [3] inclinacion al recentrar (L3/R3)
- *   [4..6] alto, distancia y lado APUNTANDO (L2); la camara se desliza de
+ *   [4..6] alto, distancia y lado APUNTANDO; la camara se desliza de
  *   un juego al otro (1/4 del camino por frame). */
-short camP[7] = { 1500, 1700, -450, 40, 1500, 1000, -400 };   /* elegidos por Nahuel */
+short camP[14] = { 1500, 1700, -450, 40, 1500, 1000, -400,     /* hombro: elegidos por Nahuel */
+                   1100, 3000,    0, 90, 1300, 2200,    0 };   /* espalda: punto de partida   */
 static int camCur[3];             /* alto, distancia, lado actuales, x16 */
 static char camSnap = 1;
 
@@ -218,19 +246,16 @@ static void btnRemap(unsigned a)
     U16(a) = w;
 }
 
-static char runPrev, runSqPrev;
-/* Cuadrado alterna el correr automatico (arranca encendido). Apagado, el
- * parche no toca el bit de correr: Cuadrado corre mientras se mantiene, como
- * en el juego original. Pad crudo +3 bit 0x80 (Cuadrado), activo en bajo. */
-unsigned char runAuto = 1;
+static char runPrev;
+/* Correr automatico: opcion del menu (v6.13; antes lo alternaba Cuadrado).
+ * Apagado, el parche no toca el bit de correr: Cuadrado o Triangulo corren
+ * mientras se mantienen, como en el juego original. */
 
 static void runForce(void)
 {
     int walk = (U8(PAD + 3) & PAD_WALK) == 0;    /* pad crudo: R1 = caminar */
-    int sq = (U8(PAD + 3) & 0x80) == 0, want;
-    if (sq && !runSqPrev && !inputLocked() && U8(PLAYER + 0x3C) == 0x01) runAuto ^= 1;
-    runSqPrev = sq;
-    if (!runAuto) { runPrev = 0; return; }
+    int want;
+    if (optGet() & OPT_NORUN) { runPrev = 0; return; }
     want = !walk && U8(PLAYER + 0x3C) == 0x01 && !inputLocked();
     int w8 = U16(BTN_ROT), wA = U16(BTN_MOV);
 
@@ -342,8 +367,6 @@ static void shotAgile(void)
  * addiu $t1, $t1, 8), asi que el ancho es largo * 8, exacto. */
 short hudPos[8] = { 16, 16,  16, 26,  260, 16,  260, 26 };   /* elegidas por Nahuel */
 unsigned char hudRight;
-unsigned char hudOff;             /* 1 = oculto (Triangulo) */
-static unsigned char hudPrevTri;
 /* Diagnostico (dc6.hudWhy): cuantas veces se llamo y por que no dibujo la
  * ultima vez: 0 dibujo, 1 OT invalida, 2 misma OT, 3 cinematica, 4 oculto. */
 unsigned short hudCnt, camCnt;     /* camCnt: llamadas del enganche de camara */
@@ -458,20 +481,9 @@ __attribute__((noinline)) void hudDraw(void)
     WHY(3);
     if (inputLocked()) return;
 
-    /* Triangulo, del pad CRUDO (+3 bit 0x10, activo en bajo; medido con
-     * dct.btnMap). En las palabras del scratchpad Triangulo sale como 0x0040,
-     * que es el bit que el juego entiende como correr segun su configuracion
-     * de botones: el pad crudo no depende de esa configuracion. Flanco propio,
-     * evaluado despues del filtro de OT: cuenta una vez por frame. */
-    {
-        /* Solo en estado normal (+3C == 01): para zafarse de una mordida se
-         * aprietan todos los botones y el HUD se prendia y apagaba solo. */
-        int tri = (U8(PAD + 3) & 0x10) == 0;
-        if (tri && !hudPrevTri && U8(PLAYER + 0x3C) == 0x01) hudOff ^= 1;
-        hudPrevTri = tri;
-    }
+    /* v6.13: el HUD se prende y apaga desde el menu (antes, Triangulo). */
     WHY(4);
-    if (hudOff) return;
+    if (optGet() & OPT_HUDOFF) return;
     WHY(0);
 
     depth0 = U32(HUD_DEPTH);
@@ -535,6 +547,109 @@ __attribute__((noinline)) void hudDraw(void)
     }
 }
 
+/* ============================================================ menu (v6.13)
+ * El menu OPCIONES del juego (Select en juego, y el del titulo) es
+ * 0x80043758: despacha por G+0x2A (tabla 0x80095350) con a0 = 0x800BBD30.
+ *   0x800437F0(o)  menu principal. o[0] = cursor (0..4), o[1] = 0 navegando /
+ *                  1 dentro de un submenu: llama a tabla 0x8009535C[o[0]](o).
+ *   0x80043950(o)  lo dibuja: 6 entradas {x, y, -, -, cadena} de 0x800106C4
+ *                  (la 0 es el titulo), resaltada la o[0]+1.
+ *   botones: [0x800AE270] = recien apretados (logicos): 0x1000 arriba,
+ *            0x4000 abajo, 0x8000 izq, 0x2000 der, 0x00A0 aceptar, 0x0040
+ *            cancelar. Sonidos: 0x80054C94(0, n): 0 mover, 1 cancelar, 2 aceptar.
+ *   texto:   0x8005F74C(ascii) convierte a codigos de la fuente grande;
+ *            0x8005F884(x, y, color, codigos) dibuja. 0x80069F84(0x404040,
+ *            0xC0C0C0, 3) = color que late (el del renglon elegido).
+ *   Los submenus usan o[2] como cursor propio y salen con o[2] = 0, o[1]--.
+ * El parche (palabras cambiadas en el lugar, ver gen.py): el dibujo usa
+ * menuTab (7 entradas) en vez de copiar la tabla del juego, el cursor llega a
+ * 5 y el despacho usa menuHnd. La entrada nueva llama a optMenu. */
+#define MENU_BTN  0x800AE270u
+#ifdef HOST_TEST
+extern const void *hostConv(const char *);
+extern void hostDraw(int, int, int, const void *);
+extern int hostPulse(int, int, int);
+extern void hostSnd(int, int);
+#define FCONV hostConv
+#define FDRAW hostDraw
+#define PULSE hostPulse
+#define MSND  hostSnd
+#else
+#define FCONV ((const void *(*)(const char *))0x8005F74Cu)
+#define FDRAW ((void (*)(int, int, int, const void *))0x8005F884u)
+#define PULSE ((int (*)(int, int, int))0x80069F84u)
+#define MSND  ((void (*)(int, int))0x80054C94u)
+#endif
+
+const char mTitle[] = "CONTROL Y CAMARA";
+static const char mLab[] = "CONTROLES\0CAMARA\0HUD\0CORRER AUTO\0SALIR";
+static const char mVal[] = "MODERNO\0TANQUE\0ORIGINAL\0HOMBRO\0ESPALDA\0SI\0NO";
+/* por renglon: desplazamiento en el byte de opciones, cantidad de valores,
+ * primera cadena de mVal */
+static const unsigned char mRow[4][3] = { {0, 2, 0}, {1, 3, 2}, {3, 2, 5}, {4, 2, 5} };
+
+#define M_LABX 0x28
+#define M_VALX 0xB8
+
+static __attribute__((noinline)) void mText(int x, int y, int col, const char *s)
+{
+    FDRAW(x, y, col, FCONV(s));
+}
+
+void optMenu(unsigned char *o)
+{
+    int b = U16(MENU_BTN), cur = o[2], opt = optGet(), i, snd = -1;
+
+    if (b & 0x1000)      { if (cur > 0) { cur--; snd = 0; } }
+    else if (b & 0x4000) { if (cur < 4) { cur++; snd = 0; } }
+    else if ((b & 0x0040) || (cur == 4 && (b & 0x00A0))) {
+        MSND(0, (b & 0x0040) ? 1 : 2);
+        o[2] = 0; o[1]--;
+        return;
+    } else if (cur < 4 && (b & 0xA0A0)) {
+        const unsigned char *r = mRow[cur];
+        int sh = r[0], n = r[1], m = n > 2 ? 3 : 1, v = (opt >> sh) & m;
+        v = ((b & 0x8000) ? v + n - 1 : v + 1) % n;
+        opt = (opt & ~(m << sh)) | (v << sh);
+        U8(OPT) = opt;
+        snd = 2;
+    }
+    if (snd >= 0) MSND(0, snd);
+    o[2] = cur;
+
+    mText(0x48, 0x10, 0x808080, mTitle);
+    for (i = 0; i < 5; i++) {
+        int y = 0x40 + i * 0x20, col = 0x808080;
+        if (i == cur) col = PULSE(0x404040, 0xC0C0C0, 3);
+        mText(M_LABX, y, col, nth(mLab, i));
+        if (i < 4) {
+            const unsigned char *r = mRow[i];
+            int v = (opt >> r[0]) & (r[1] > 2 ? 3 : 1);
+            if (v >= r[1]) v = 0;
+            mText(M_VALX, y, col, nth(mVal, r[2] + v));
+        }
+    }
+}
+
+#ifndef HOST_TEST
+/* Tablas que lee el codigo del juego ya parchado (gen.py pone sus direcciones). */
+struct MItem { unsigned char x, y, r0, r1; const char *s; };
+const struct MItem menuTab[7] = {
+    { 0x74, 0x10, 0, 0, (const char *)0x80010678u },    /* OPCIONES        */
+    { 0x34, 0x3A, 0, 0, (const char *)0x80010684u },    /* CONFIG. BOTONES */
+    { 0x34, 0x54, 0, 0, mTitle },                       /* CONTROL Y CAMARA */
+    { 0x34, 0x6E, 0, 0, (const char *)0x80010694u },    /* SONIDO          */
+    { 0x34, 0x88, 0, 0, (const char *)0x8001069Cu },    /* AJUSTAR MONITOR */
+    { 0x34, 0xA2, 0, 0, (const char *)0x800106ACu },    /* REINICIAR JUEGO */
+    { 0x34, 0xBC, 0, 0, (const char *)0x800106BCu },    /* SALIR           */
+};
+typedef void (*MenuFn)(unsigned char *);
+const MenuFn menuHnd[6] = {
+    (MenuFn)0x80043A40u, optMenu, (MenuFn)0x800442A0u,
+    (MenuFn)0x80044A8Cu, (MenuFn)0x80044DE8u, (MenuFn)0x80043930u,
+};
+#endif
+
 /* ============================================================ modo analogico
  * El juego usa libpad (PadInitDirect en 0x8008FC38 con los buffers
  * 0x800AE288/+0x22) y tiene PadSetMainMode enlazado pero NUNCA lo llama
@@ -580,6 +695,21 @@ void hookPlayer(int s0)
     camMiss = 0;
     analogForce();
     hudDraw();
+    /* v6.13: controles TANQUE = los originales del juego, sin remapeo, sin
+     * correr automatico ni disparo agil. Lo unico que se agrega: con el mando
+     * en analogico el stick izquierdo hace de cruceta (umbral TANK_DEAD). */
+    if (optGet() & OPT_TANK) {
+        strafeOn = 0; cutHeld = NONE; cutLast = NONE;
+        if (padAnalog() && !inputLocked()) {
+            int bits = 0;
+            dx = U8(PAD + 6) - 128; dy = U8(PAD + 7) - 128;
+            if (dy < -TANK_DEAD) bits = 0x1000; else if (dy > TANK_DEAD) bits = 0x4000;
+            if (dx > TANK_DEAD) bits |= 0x2000; else if (dx < -TANK_DEAD) bits |= 0x8000;
+            U16(BTN_ROT) |= bits;
+            U16(BTN_MOV) |= bits;
+        }
+        return;
+    }
     shotAgile();
     camNow = camYaw();
     if (inputLocked()) { strafeOn = 0; cutHeld = NONE; cutLast = camNow; return; }
@@ -670,7 +800,7 @@ void hookPlayer(int s0)
      * deja de correr ~11 Vsync mientras la de hombro sigue girando (stick
      * derecho, apuntado, L3): al volver, el salto de yaw parecia un corte y
      * Regina seguia con el rumbo viejo. En hombro, sin buffer. */
-    if (!shNative) cutHeld = NONE;
+    if (sortOn) cutHeld = NONE;
     else if (cutHeld != NONE) {
         if (iabs(wrapS(stick - cutHeldStick)) > 512) cutHeld = NONE;
         else cam = cutHeld;
@@ -731,6 +861,7 @@ static void bgClear(void)
 void hookCamera(int s0)
 {
     int pa, rx, ry, r3, aiming, v;
+    const short *cp;
 
     if ((unsigned)s0 != CAMOBJ) return;
     camCnt++;
@@ -745,7 +876,6 @@ void hookCamera(int s0)
         if (U8(0x800BAF32u) == 10 && U8(0x800BAF3Eu) == 10) hudDraw();
     }
     pa = U16(PLAYER + 0x2A) & 0xFFF;
-    if (!shInit) { shInit = 1; shYaw = (pa + SH_YAWOFF) & 0xFFF; shPitch = camP[3]; }
 
     /* v6.10: al cambiar entre hombro y original (R3, cinematicas) se vuelve a
      * correr el guion de la camara actual, asi las mallas quedan como
@@ -762,31 +892,34 @@ void hookCamera(int s0)
         visPrev = sortOn;
     }
     sortOn = 0;
-    /* Cinematica (misma bandera que corta los botones, ver inputLocked): camara
-     * original mientras dure, sin atender R3/L3; al terminar, el modo que tenia
-     * el jugador con el mismo yaw/pitch. */
+    /* v6.13: la camara sale de las opciones (menu). R3 pasa a la siguiente
+     * (original -> hombro -> espalda) y lo deja anotado en las opciones; L3
+     * recentra detras de Regina (sirve corriendo, sin tener que apuntar).
+     * Bits del pad crudo +2, activos en bajo: R3 0x04, L3 0x02.
+     * Cinematica (misma bandera que corta los botones, ver inputLocked): camara
+     * original mientras dure, sin atender R3/L3; al terminar, la elegida con
+     * el mismo yaw/pitch (camMode no se toca). */
     {
-        int lk = inputLocked();
-        if (lk && !shLocked) { shSaved = shNative; shNative = 1; }
-        if (!lk && shLocked) shNative = shSaved;
-        shLocked = lk;
-        if (lk) { sideRestore(); shPrevR3 = (U8(PAD + 2) & 0x04) == 0; return; }
-    }
-    /* R3 alterna con la camara original; L3 recentra detras de Regina (sirve
-     * corriendo, sin tener que apuntar con R1). Bits del pad crudo +2,
-     * activos en bajo: R3 0x04, L3 0x02. */
-    if (padAnalog()) {
-        int l3;
-        r3 = (U8(PAD + 2) & 0x04) == 0;
-        l3 = (U8(PAD + 2) & 0x02) == 0;
-        if (r3 && !shPrevR3) {
-            shNative = !shNative;
-            if (!shNative) { shYaw = (pa + SH_YAWOFF) & 0xFFF; shPitch = camP[3]; camSnap = 1; }
+        int mode = optCam(), l3 = 0;
+        if (mode == 3) mode = 0;
+        r3 = padAnalog() && (U8(PAD + 2) & 0x04) == 0;
+        if (inputLocked()) { sideRestore(); shPrevR3 = r3; return; }
+        if (padAnalog()) {
+            l3 = (U8(PAD + 2) & 0x02) == 0;
+            if (r3 && !shPrevR3) {
+                mode = mode == 2 ? 0 : mode + 1;
+                U8(OPT) = (optGet() & ~6) | (mode << 1);
+            }
         }
         shPrevR3 = r3;
-        if (l3) { shYaw = (pa + SH_YAWOFF) & 0xFFF; shPitch = camP[3]; }
+        cp = camP + (mode ? mode - 1 : 0) * 7;
+        if (mode && (mode != camMode || l3)) {
+            shYaw = (pa + SH_YAWOFF) & 0xFFF; shPitch = cp[3];
+            if (mode != camMode) camSnap = 1;
+        }
+        camMode = mode;
+        if (!mode) { sideRestore(); return; }
     }
-    if (shNative) { sideRestore(); return; }
     /* Puertas: resuelto sin codigo (en el disco la camara queda en la animacion). */
 
     /* v6.10: cortes de camara sin la pausa. Medido (dcr.freezeWho + desensamblado):
@@ -807,7 +940,8 @@ void hookCamera(int s0)
     if (padAnalog()) {
         rx = U8(PAD + 4) - 128;
         ry = U8(PAD + 5) - 128;
-        aiming = (U8(PAD + 3) & PAD_AIM) == 0;   /* L2 despues del remapeo */
+        /* apuntar: L2 con el control moderno, R1 con los controles tanque */
+        aiming = (U8(PAD + 3) & ((optGet() & OPT_TANK) ? PAD_WALK : PAD_AIM)) == 0;
         if (iabs(rx) > DEAD && !aiming) shYaw += (rx * SH_SPEED) / 128;
         if (SH_INVERTY) ry = -ry;
         if (iabs(ry) > DEAD) shPitch += (ry * SH_SPEED) / 256;
@@ -825,7 +959,7 @@ void hookCamera(int s0)
     {
         int i;
         for (i = 0; i < 3; i++) {
-            int t = camP[(aiming ? 4 : 0) + i] << 4;
+            int t = cp[(aiming ? 4 : 0) + i] << 4;
             if (camSnap) camCur[i] = t;
             else camCur[i] += (t - camCur[i]) / 4;
         }

@@ -8,14 +8,16 @@ Imagen de 2 pistas: `Track 1` (datos) + `Track 2` (audio) + `.cue` + `.sbi`.
 Protección **LibCrypt** — esto condiciona todo el método de parcheo.
 
 
-> **ESTADO ACTUAL: v6.12, VALIDADA** (septiembre 2026). Publicada en GitHub
-> (`nahuelx32/dino-crisis-modern-controls`) con parches xdelta/PPF en Releases.
-> Ejecutable armado por `src/mkdisc.py` del repositorio (saca el original de la
-> imagen limpia). Resumen: **sección 20** (v6.8), **21** (v6.9: videos), **22**
-> (v6.10: la cámara al hombro ve toda la sala), **23** (v6.11: tope del buffer
-> de dibujo + cargador de tres tramos) y **24** (v6.12: encuadre de los puzles +
-> repositorio). Las secciones 1–14 son historia; donde contradigan a 20–24,
-> valen 20–24.
+> **ESTADO ACTUAL: v6.13, VALIDADA** (noviembre 2026) por Nahuel en RAM
+> (Redux) y desde el disco (DuckStation). Menú de opciones dentro del juego:
+> **sección 25**. Antes: **20** (v6.8), **21** (v6.9: videos), **22** (v6.10:
+> la cámara al hombro ve toda la sala), **23** (v6.11: tope del buffer de
+> dibujo), **24** (v6.12: encuadre de los puzles + repositorio). Las secciones
+> 1–14 son historia; donde contradigan a 20–25, valen 20–25.
+> Repositorio: `nahuelx32/dino-crisis-modern-controls` (parches en Releases).
+>
+> **La carpeta se mudó: todo lo que el documento llama `C:\dc` ahora es
+> `C:\proyectos\dino crisis`** (noviembre 2026).
 
 ---
 
@@ -1944,3 +1946,185 @@ cero reproduce el Track 1 de la release byte a byte. Revisado: ningún bloque de
 El `.gitignore` bloquea imágenes, ejecutables, `grabar_*.ps1`, `sectors*.json`
 y volcados. Esta sesión no puede subir al repositorio (no está entre los
 repositorios autorizados); Nahuel sube con GitHub Desktop.
+
+
+## 25. v6.13: menú de opciones dentro del juego (VALIDADA en RAM y desde el disco)
+
+Pedido de Nahuel (noviembre 2026): un menú para elegir controles modernos o de
+tanque y el ángulo de cámara (hombro o Regina de espaldas, de cuerpo entero),
+porque los botones se acaban. Decidido: va **dentro del menú OPCIONES del
+juego** (el de Select), que ya pausa y ya tiene fuente, sonidos y navegación.
+
+### El menú OPCIONES del juego (leído del desensamblado; todo en el ejecutable)
+
+- `0x80043758` = menú OPCIONES. Lo llaman `0x80040F88` (en juego: después
+  dibuja la escena con `0x8006B3B8`) y `0x8007188C`. Pone la profundidad del
+  texto en 2 (`0x8005F854`) y despacha por `G+0x2A` (tabla `0x80095350`) con
+  `a0 = 0x800BBD30` (objeto del menú).
+- `0x800437F0(o)` = menú principal. `o[0]` cursor (0..4), `o[1]` 0 navegando /
+  1 dentro de un submenú → llama a `tabla 0x8009535C[o[0]](o)`:
+  `0x80043A40` config. botones, `0x800442A0` sonido, `0x80044A8C` monitor,
+  `0x80044DE8` reiniciar, `0x80043930` salir.
+- `0x80043950(o)` lo dibuja: copia a la pila 6 entradas de 8 bytes
+  `{x, y, -, -, puntero a cadena ASCII}` desde `0x800106C4` (la 0 es el título
+  `OPCIONES`) y resalta la `o[0]+1`. Cadenas en `0x80010678..0x800106C0`.
+- Botones del menú: **`0x800AE270` = recién apretados** (lógicos; es
+  `0x800B9DD2`, lo llena `0x80015E9C`): `0x1000` arriba, `0x4000` abajo,
+  `0x8000` izquierda, `0x2000` derecha, `0x00A0` aceptar, `0x0040` cancelar,
+  `0x0100` Select. (La sección 21 lo llamaba "mantenidos": es de flanco.)
+- Sonidos: `0x80054C94(0, n)`: 0 mover, 1 cancelar, 2 aceptar/cambiar.
+- Fuente grande: `0x8005F74C(ascii)` convierte a códigos de 16 bits (glifo×2)
+  en `0x800BEBC8`: espacio 0, `?` 0x82, `:` 0x88, `.` 0x9A, `/` 0x96, salto de
+  línea 0x4000, dígitos (c+5)×2, `A-Z` (c−0x40)×2, `a-z` (c−0x46)×2, fin
+  0xA000. `0x8005F884(x, y, color, códigos)` dibuja. `0x8005F8CC(x, y, color,
+  n)` dibuja el mensaje n de la tabla del juego (`0x80096F9C` → `0x800976D0`):
+  de ahí salen "Tipo de Botones", "Autoapuntar", etc.
+- `0x80069F84(0x404040, 0xC0C0C0, 3)` = color que late (renglón elegido).
+- Los submenús usan `o[2]` como cursor propio y salen con `o[2] = 0`, `o[1]--`.
+- **Tipo de botones A: Triángulo y Cuadrado son los dos "Cancelar/Correr"**
+  (se ve en la pantalla CONFIG. BOTONES). Por eso los dos llegan como `0x0040`:
+  cierra la duda de las secciones 16 y 20.
+
+### Dónde viven las opciones: un byte libre de la configuración guardada
+
+La configuración del juego son 12 bytes, `G+0xA2CC..0xA2D7`. `0x8003FBF8` los
+copia como 3 palabras al bloque de la partida (`[0x800BAF2C]+0x844`) y
+`0x800421D4` los trae; `0x80045270` pone los de fábrica. El juego usa
+`CC..D4` (CC/CD/CE sonido, CF tipo de botones, D0 vibración, D1 autoapuntar,
+D2, D3, D4). **`D5`, `D6` y `D7` no los lee ni escribe nadie** (buscado en
+todo el ejecutable), pero viajan con la tercera palabra: se guardan y se
+cargan con la partida.
+
+**`G+0xA2D5 = 0x800BA6AD` = byte de opciones del parche.** Todo en 0 = como
+venía el parche (así las partidas viejas cargan con los valores de siempre):
+
+```
+bit 0      controles    0 moderno   1 tanque (los originales, sin remapeo)
+bits 1-2   camara       0 original  1 hombro  2 espalda
+bit 3      HUD          0 si        1 no
+bit 4      correr auto  0 si        1 no   (solo con el control moderno)
+```
+
+SIN PROBAR en el emulador: que el byte realmente vuelva al cargar la partida.
+
+### El parche
+
+- Entrada nueva **`CONTROL Y CAMARA`** (segunda del menú; las seis quedan cada
+  26 px en vez de 32). Submenú `optMenu(o)` en C, con la fuente y los sonidos
+  del juego: `CONTROLES MODERNO/TANQUE`, `CAMARA ORIGINAL/HOMBRO/ESPALDA`,
+  `HUD SI/NO`, `CORRER AUTO SI/NO`, `SALIR`. Izquierda/derecha/aceptar
+  cambian; cancelar o SALIR vuelven.
+- Palabras del juego cambiadas **en el lugar** (no son saltos; `gen.py`):
+  `0x8004395C` (10 palabras: el dibujo recorre `menuTab`, 7 entradas del blob,
+  en vez de copiar su tabla), `0x80043A14` (7 entradas), `0x80043874` (cursor
+  hasta 5), `0x80043814`/`0x80043904` (despacho por `menuHnd`, 6 manejadores).
+  Todo cae en un sector (164320). `dc6.install()` acepta ahí palabras de otra
+  versión del blob (mismo código y registros).
+- **Tanque** (`hookPlayer`): no se hace nada de lo moderno (remapeo, correr,
+  disparo ágil, giro); con el mando en analógico el stick izquierdo hace de
+  cruceta (umbral 60). La cámara y el HUD siguen funcionando; apuntar para la
+  cámara es R1.
+- **Cámara**: el modo sale del byte de opciones; `camP` tiene dos juegos de 7
+  (hombro y espalda). R3 pasa a la siguiente (original → hombro → espalda) y
+  lo anota en las opciones; L3 recentra. En cinemáticas, original; al
+  terminar, la elegida con el mismo encuadre.
+  Espalda (punto de partida, a ajustar con `dc6.cam`): alto 1100, dist 3000,
+  lado 0, incl 90; apuntando 1300/2200/0.
+- **Triángulo y Cuadrado ya no alternan nada** (HUD y correr automático son
+  opciones). Con correr automático en NO, corren mantenidos como en el original.
+- Lua: `dc6.opt()`, `dc6.opt('camara','espalda')`, `dc6.cam('e_dist', v)`
+  (`e_` espalda, `ea_` espalda apuntando).
+
+### Pruebas hechas (en la nube)
+
+- `v6/menutest.py` (Unicorn): corre el **código real del menú del juego**
+  (`0x800437F0`, ejecutable original) con el blob y los enganches puestos;
+  corta sonido, dibujo y color y captura cada texto. Verificado: 7 entradas,
+  cursor frena en 5, los 5 submenús originales se despachan a su manejador, el
+  submenú propio cambia cada opción, sale con SALIR y con cancelar, registros
+  `s` y pila intactos.
+- `v6/hosttest2.c`: cámaras por opción, R3, apuntado (L2 / R1 en tanque),
+  cinemática, HUD sí/no, correr sí/no, tanque (stick → cruceta, sin remapeo).
+- `dc6.install()` / `remove()` simulados sobre el ejecutable original.
+
+### Espacio: HOY NO ENTRA EN EL DISCO (228 bytes de más), y cómo se resuelve
+
+Blob 8528 bytes → LZSS 6024; capacidad con los tres tramos 5796.
+
+1. **Más tramos de ceros.** El cargador repone los ceros antes de saltar al
+   juego, así que sirve CUALQUIER corrida de ceros del ejecutable aunque sean
+   variables. Fuera de los tres tramos hay 29 corridas de ≥32 bytes = 1604
+   bytes (82 de ≥16 = 2552). Con un cargador de tabla (dirección + largo por
+   tramo) son ~1,5 KB más de capacidad. Es lo primero.
+2. **Mejor compresor.** Referencias sobre el blob nuevo: deflate 5106, LZMA
+   4575 (LZSS 6024). Un formato de bits tipo ZX0 debería andar cerca de
+   deflate: ~900 bytes. Hay que escribir compresor y descompresor propios (no
+   se pudo ejecutar código de terceros descargado en esta sesión).
+3. Recortar el código nuevo (`optMenu` 664 bytes, `mText` 100).
+
+### Prueba en RAM (Nahuel): "funciona más que perfecto"
+
+Decidido: el nombre `CONTROL Y CAMARA` queda, la cámara de espalda queda con
+los valores de partida y **R3 sigue cambiando de cámara**. Falta que confirme
+expresamente que las opciones vuelven al cargar la partida.
+
+### Disco v6.13: cargador con TABLA de tramos (`loader3.S`)
+
+- `loader3.S` reemplaza a `loader2.S`: en vez de tres tramos fijos lee una
+  tabla que va justo después de su código, por tramo dos medias palabras:
+  `(dirección − 0x80080000) / 4` y `largo / 4`. `getb` abre el tramo siguiente
+  cuando se termina el actual; al final recorre la tabla y deja TODOS los
+  tramos en cero. Solo usa `$at`, `$v0`, `$v1`, `$t0-$t9` (ya no toca
+  `a0`/`a1`). 320 bytes de código.
+- `mkdisc.py` (nuevo, basado en el del repositorio): busca las corridas de
+  ceros de ≥32 bytes del ejecutable (desde `0x80080000`), usa primero la zona
+  del cargador, la tira y la cola, y después las demás de mayor a menor, solo
+  las que hagan falta. Comprueba que cada tramo esté en cero en el original.
+- v6.13: 5 tramos: `800A30E4..800A338C` (680), `800A3804..800A486C` (4200),
+  `800A9C60..800AA000` (928), `800A9A0C..800A9A8C` (128),
+  `800A4F88..800A4FE0` (88). Blob 8528 → LZSS 6024. **Quedan 1280 bytes
+  comprimidos** usando todas las corridas de ≥32; bajando el mínimo a 16 hay
+  unos 700 más, y un compresor mejor daría otros ~900.
+- **19 sectores**: los 18 de v6.12 + el **164320** (las palabras del menú).
+  Los dos tramos nuevos caen en sectores que ya se tocaban (164514, 164524).
+- Controles:
+  - `mkdisc.py` del repositorio con el código v6.12 recompilado acá reproduce
+    el Track 1 v6.12 publicado (SHA-1 `766c4da2…`): la cadena de herramientas
+    de esta sesión es la misma.
+  - Unicorn ejecuta el cargador: llega a `0x800121D4`, blob exacto, RAM igual
+    a original + cargador/tabla + enganches, nada escrito en otro lado, `sp`,
+    `a0` y `a1` intactos.
+  - `emu.py` (independiente): lo mismo sobre el `SLES_022.11` armado, y
+    **controles negativos**: 12 de 12 bytes cambiados al azar, detectados.
+  - `grabar_v613.ps1`: sus 19 sectores aplicados a la imagen limpia dan el
+    Track 1 de `mkdisc.py`; las 18 huellas `Orig` conocidas coinciden con las
+    de `grabar_v612.ps1`.
+- **Track 1 v6.13**: SHA-1 `34fa4930c4a5dc4f7b433ea771e64b4b14385775`, MD5
+  `a45761c822e3a22de255bb6f0cbba40d`, CRC32 `7905F9E7`.
+- Parches candidatos (`release\`): `…_v6.13.xdelta` (10718 B, probado: aplica
+  sobre la limpia y rechaza otra imagen) y `…_v6.13.ppf` (11958 B, aplicado ==
+  parcheado). **No publicar hasta la prueba desde el disco.**
+
+### Prueba desde el disco (Nahuel, DuckStation): todas las opciones funcionan
+
+Publicación preparada:
+- `release\DinoCrisis_Spain_ControlesModernos_v6.13.{xdelta,ppf,zip}` y
+  `LEEME_v6.13.txt` (el zip trae los dos parches y el LEEME).
+- `github\actualizacion_v6.13\`: `README.md` (ES/EN), `.gitignore`,
+  `docs/` (`DESARROLLO.md` = este documento, `LEEME.txt`), `lua/dc6.lua`,
+  `src/` (`dcmod.c`, `gen.py`, `loader3.S`, `mkdisc.py`, `emu.py`,
+  `menutest.py`). **Borrar `src/loader2.S` del repositorio.**
+- Control: un árbol armado como el repositorio (archivos viejos + esta
+  actualización) compila, pasa `emu.py` y `menutest.py` y da el Track 1
+  `34fa4930…`. Ningún bloque de 64 bytes del ejecutable original aparece en
+  los archivos de la actualización.
+
+### Pendientes
+
+1. Nahuel: subir la actualización con GitHub Desktop y crear la Release v6.13.
+2. Confirmar expresamente que las opciones vuelven al cargar la partida (el
+   LEEME lo afirma; sale del desensamblado, sección "Dónde viven las opciones").
+3. Opcional: compresor mejor y recorte de `optMenu` cuando falte lugar.
+4. Los de siempre: `comprobar_imagen.ps1`, capturas en `docs/img/`, consola
+   real (LibCrypt primero) y DualShock de verdad, pasada completa, la posible
+   5.ª batería del puzle.

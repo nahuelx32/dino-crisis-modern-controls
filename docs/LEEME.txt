@@ -1,24 +1,39 @@
-DINO CRISIS (PS1, PAL España) - CONTROLES MODERNOS v6.12
+DINO CRISIS (PS1, PAL España) - CONTROLES MODERNOS v6.13
 ========================================================
 
 Parche para la versión PAL española de Dino Crisis (SLES-02211).
 NO incluye el juego: necesitás tu propia copia.
 
-CONTROLES
+MENÚ DE OPCIONES (NUEVO)
+En el juego: Select > OPCIONES > CONTROL Y CAMARA (también está en el menú
+OPCIONES de la pantalla de título). Izquierda/derecha cambian cada opción:
+- CONTROLES: MODERNO o TANQUE (los controles originales del juego).
+- CAMARA: ORIGINAL (cámaras fijas), HOMBRO o ESPALDA (Regina de cuerpo entero).
+- HUD: SI o NO.
+- CORRER AUTO: SI o NO (solo con el control moderno).
+Las opciones se guardan con la partida, junto con la configuración del juego.
+
+CONTROLES (MODERNO)
 - Stick izquierdo: mover en 360°, relativo a la cámara (sin controles tanque).
 - L2: apuntar.  R2: disparar.  R1 (mantenido): caminar.
-- Cuadrado: activa/desactiva el correr automático (arranca activado)
 - X: acción, como en el original.
-- Triángulo: muestra/oculta el HUD.
-- R3: alterna entre la cámara al hombro y las cámaras fijas originales.
-  El juego arranca con la cámara original.
-- Stick derecho: mueve la cámara al hombro. Apuntando, gira la mira.
+- Con CORRER AUTO en NO, Cuadrado o Triángulo corren mientras se mantienen,
+  como en el original.
+- R3: pasa a la cámara siguiente (original > hombro > espalda). Es lo mismo
+  que cambiarla en el menú. El juego arranca con la cámara original.
+- Stick derecho: mueve la cámara (hombro o espalda). Apuntando, gira la mira.
 - L3: pone la cámara detrás de Regina.
+
+CONTROLES (TANQUE)
+- Los del juego original, sin cambios (con el tipo de botones A: R1 apunta,
+  X dispara, Cuadrado corre).
+- El stick izquierdo hace de cruceta. La cámara elegida, R3, L3 y el HUD
+  funcionan igual.
 
 QUÉ HACE
 - Movimiento libre en 360° con stick analógico, relativo a la cámara.
 - Modo analógico automático: el parche lo activa solo al entrar a jugar.
-- Cámara en tercera persona al hombro:
+- Dos cámaras en tercera persona, al hombro y de espalda:
   - se ve toda la sala, no solo lo que entra en la cámara fija del momento,
     incluidos los dinosaurios;
   - los cambios de cámara no pausan el juego;
@@ -34,10 +49,14 @@ QUÉ HACE
 - Start saltea todos los videos de apertura. La pantalla de advertencia del inicio no se
   saltea: ahí el juego hace su chequeo de protección.
 - En cinemáticas no se puede mover a Regina y se usa la cámara original.
+- Todo se puede activar o desactivar desde el menú de opciones.
 
-CAMBIOS EN v6.12
-- Corregido: después de usar la cámara al hombro, la vista de los puzles
-  quedaba corrida hasta salir de la habitación.
+CAMBIOS EN v6.13
+- Nuevo: menú CONTROL Y CAMARA dentro del menú OPCIONES del juego.
+- Nuevo: controles de tanque (los originales) como opción.
+- Nuevo: cámara de espalda.
+- El HUD y el correr automático pasan al menú: Triángulo y Cuadrado ya no los
+  activan ni desactivan.
 
 IMAGEN REQUERIDA
 Pista de datos: "Dino Crisis (Spain) (Track 1).bin"
@@ -51,9 +70,9 @@ El Track 2 (audio) se usa sin tocar; su SHA-1 en Redump es
 d9f92af296360772e62caa4cb276de3fa74f5538.
 
 Resultado esperado (Track 1 parcheado):
-  CRC32 : 11B1D2AB
-  MD5   : c52f7a1b610ce297c01102301fde3415
-  SHA-1 : 766c4da22e35777e3ba803022d001808c1f64a03
+  CRC32 : 7905F9E7
+  MD5   : a45761c822e3a22de255bb6f0cbba40d
+  SHA-1 : 34fa4930c4a5dc4f7b433ea771e64b4b14385775
 
 CÓMO APLICARLO
 Parcheá SOLO el Track 1 y hacé una copia antes.
@@ -72,9 +91,11 @@ IMPORTANTE
   sirve: hay que quitar LibCrypt de la imagen con una herramienta aparte
   (por ejemplo libcrypt-patcher) y recién después aplicar este parche.
 - Probado en PCSX-Redux y DuckStation. No probado en consola real.
+- Las opciones nuevas viajan en la partida guardada. Una partida guardada con
+  el parche sirve igual en el juego sin parchear, que las ignora.
 - Las partidas de la memory card sirven. Los savestates NO: no uses
   savestates hechos con el juego sin parchear ni con otra versión del parche.
-- En vistas al hombro muy cargadas puede faltar alguna parte del escenario
+- En vistas al hombro o de espalda muy cargadas puede faltar alguna parte del escenario
   lejano durante ese momento: es el límite que evita que el juego se cuelgue.
-- Con la cámara al hombro, algún marco de puerta y otros objetos pueden verse a través de una
+- Con la cámara al hombro o de espalda, algún marco de puerta y otros objetos pueden verse a través de una
   pared: es un límite del orden de dibujo del motor original.
